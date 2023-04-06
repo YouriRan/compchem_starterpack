@@ -1,0 +1,15 @@
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - scipy
+  - matplotlib
+  - pandas
+  - networkx
+  - pytorch
+  - scikit-learn
+  - openmm
+  - mdanalysis
+  - mdtraj
+  - biopython

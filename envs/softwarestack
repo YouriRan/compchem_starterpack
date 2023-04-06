@@ -1,0 +1,6 @@
+spack:
+    cp2k (plumed, cuda)
+    gromacs (plumed, cuda, libtorch, slurm)
+    lammps (plumed, cuda, all)
+    plumed (>= 2.8)
+    
