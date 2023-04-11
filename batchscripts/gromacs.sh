@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=gromacs
+#SBATCH --job-name=basic
 #SBATCH --output=%j.log     
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -12,6 +12,11 @@
 
 # set scratch
 export TMPDIR=/state/partition1
+export WORKDIR=${TMPDIR}/$USER/$SLURM_JOBID
+export RESULTSDIR=$SLURM_SUBMIT_DIR/$SLURM_JOBID
+
+# set omp threads
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 ##################
 # spack settings #
@@ -28,9 +33,37 @@ spack load gromacs ^slurm architecture=$(spack arch) || spack load gromacs ^slur
 
 echo "Using gromacs with path $(which gmx_mpi)"
 
-############
-# metadata #
-############
+
+###################################
+# epilogue and prologue functions #
+###################################
+
+# these functions only work for single node jobs
+# for multi-node jobs, please edit script such that a scratch is made on every node
+
+prologue()
+{
+    # make scratch directory
+    mkdir -p $WORKDIR
+    # copy files to scratch directory
+    cp -rf $SLURM_SUBMIT_DIR/* $WORKDIR
+    cd $WORKDIR
+}
+
+# copies all files from scratch dir to submit directory. Does not remove data unless copy 
+epilogue()
+{   
+    # make results directory
+    mkdir -p $RESULTSDIR
+    # copy files and only delete if copy works, else notify
+    cp -r $WORKDIR/* $RESULTSDIR && rm -rf $WORKDIR \ 
+        || echo "IMPORTANT: Copying the data back from $MY_HOST has failed, data is kept on the local nodes"
+}
+
+##################
+# print metadata #
+##################
+
 pwd; hostname; date
 echo "===="
 echo "Number of cores/node:$SLURM_CPUS_ON_NODE"
@@ -52,22 +85,19 @@ echo "Number of tasks=$SLURM_NTASKS"
 # run #
 #######
 
-# no coredumps
+# no coredumps (from Mahdi's script, what does this do?)
 ulimit -S -c 0
 ulimit -s unlimited
-export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
-# make working directory on compute node
-mkdir -p $TMPDIR/$USER/$SLURM_JOBID
-cp -rf $SLURM_SUBMIT_DIR/* $TMPDIR/$USER/$SLURM_JOBID
-cd $TMPDIR/$USER/$SLURM_JOBID
+# run prologue
+prologue
+
+# run epilogue when shell exits (scancel or script finished)
+trap "{epilogue; }" EXIT
 
 # run executables
 srun --mpi=pmix gmx_mpi mdrun -deffnm nvt 
 
-# copy data to head node and clean
-mkdir -p $SLURM_SUBMIT_DIR/result-$SLURM_JOBID
-cp -rf $TMPDIR/$USER/$SLURM_JOBID/* $SLURM_SUBMIT_DIR/result-$SLURM_JOBID
-rm -rf $TMPDIR/$USER/$SLURM_JOBID
 
+# exit (epilogue is ran)
 exit
