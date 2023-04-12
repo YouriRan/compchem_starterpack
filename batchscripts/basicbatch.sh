@@ -50,8 +50,7 @@ epilogue()
     # make results directory
     mkdir -p $RESULTSDIR
     # copy files and only delete if copy works, else notify
-    cp -r $WORKDIR/* $RESULTSDIR && rm -rf $WORKDIR \ 
-        || echo "IMPORTANT: Copying the data back from $MY_HOST has failed, data is kept on the local nodes"
+    cp -r $WORKDIR/* $RESULTSDIR && rm -rf $WORKDIR
 }
 
 ##################
